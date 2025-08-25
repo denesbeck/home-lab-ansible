@@ -1,0 +1,11 @@
+# config files
+config
+
+# inventory
+inventory
+
+# variables
+vars
+
+# ansible.log and ansible.cfg
+ansible.*

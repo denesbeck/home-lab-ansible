@@ -1,0 +1,10 @@
+---
+- name: Restart all Ubuntu servers
+  hosts: all
+  become: yes
+  tasks:
+    - name: Restart the server
+      command: shutdown -r now
+      async: 1
+      poll: 0
+      ignore_errors: yes
