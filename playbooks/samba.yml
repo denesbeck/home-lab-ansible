@@ -3,6 +3,8 @@
   hosts: all
   become: yes
   tasks:
+    - import_tasks: ../tasks/update-packages.yml
+
     - name: Install Samba package
       apt:
         name: samba

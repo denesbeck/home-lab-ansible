@@ -1,23 +1,7 @@
 ---
-- name: Consolidated playbook to configure system
-  hosts: all
-  become: yes
-
-  tasks:
-    - name: Include `Update package list` playbook
-      import_playbook: playbooks/update.yml
-
-    - name: Include `Setup and mount volumes` playbook
-      import_playbook: playbooks/volumes.yml
-
-    - name: Include `Install and configure samba` playbook
-      import_playbook: playbooks/samba.yml
-
-    - name: Include `Install Docker and configure non-root user on Ubuntu` playbook
-      import_playbook: playbooks/docker.yml
-
-    - name: Include `Configure UFW and Allow Custom Ports` playbook
-      import_playbook: playbooks/ufw.yml
-
-    - name: Include `Set up Transmission container` playbook
-      import_playbook: playbooks/transmission.yml
+- import_playbook: ./update.yml
+- import_playbook: ./volumes.yml
+- import_playbook: ./samba.yml
+- import_playbook: ./docker.yml
+- import_playbook: ./ufw.yml
+- import_playbook: ./transmission.yml

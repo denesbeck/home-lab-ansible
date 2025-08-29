@@ -3,10 +3,7 @@
   hosts: all
   become: yes
   tasks:
-    - name: Update package list
-      apt:
-        update_cache: yes
-        cache_valid_time: 3600
+    - import_tasks: ../tasks/update-packages.yml
 
     - name: Upgrade all packages
       apt:
