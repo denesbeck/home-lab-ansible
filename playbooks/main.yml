@@ -18,3 +18,6 @@
 
     - name: Include `Configure UFW and Allow Custom Ports` playbook
       import_playbook: playbooks/ufw.yml
+
+    - name: Include `Set up Transmission container` playbook
+      import_playbook: playbooks/transmission.yml

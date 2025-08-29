@@ -1,0 +1,33 @@
+---
+- name: Full Docker reset
+  hosts: all
+  become: yes
+  tasks:
+    - name: Stop all running containers
+      shell: |
+        docker ps -q | xargs -r docker stop
+      ignore_errors: true
+
+    - name: Remove all containers
+      shell: |
+        docker ps -aq | xargs -r docker rm -f
+      ignore_errors: true
+
+    - name: Remove all Docker volumes
+      shell: |
+        docker volume ls -q | xargs -r docker volume rm
+      ignore_errors: true
+
+    - name: Remove all user-defined Docker networks (except default ones)
+      shell: |
+        docker network ls --filter "type=custom" -q | xargs -r docker network rm
+      ignore_errors: true
+
+    - name: Remove all Docker images
+      shell: |
+        docker images -aq | xargs -r docker rmi -f
+      ignore_errors: true
+
+    - name: Clear Docker build cache
+      shell: docker builder prune -f
+      ignore_errors: true
