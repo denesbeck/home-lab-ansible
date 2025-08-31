@@ -1,0 +1,56 @@
+---
+- name: Set up Filebrowser container
+  hosts: all
+  become: yes
+  vars_files:
+    - ../vars/filebrowser.yml
+
+  tasks:
+    - name: Create necessary directories for Filebrowser container
+      file:
+        path: "{{ item }}"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        state: directory
+        mode: "0755"
+        recurse: yes
+      loop:
+        - "{{ filebrowser_movies_path }}"
+        - "{{ filebrowser_photos_path }}"
+        - "{{ filebrowser_private_path }}"
+        - "{{ filebrowser_database_path }}"
+        - "{{ filebrowser_config_path }}"
+
+    - name: Gather user ID (PUID)
+      command: "id -u {{ ansible_user }}"
+      register: user_id
+      changed_when: false
+
+    - name: Gather group ID (PGID)
+      command: "id -g {{ ansible_user }}"
+      register: group_id
+      changed_when: false
+
+    - name: Ensure Filebrowser container is running
+      docker_container:
+        name: "{{ filebrowser_container_name }}"
+        image: "filebrowser/filebrowser"
+        state: started
+        restart_policy: unless-stopped
+        published_ports:
+          - "127.0.0.1:8080:80"
+        env:
+          PUID: "{{ user_id.stdout }}"
+          PGID: "{{ group_id.stdout }}"
+        volumes:
+          - "{{ filebrowser_movies_path }}:/srv/movies"
+          - "{{ filebrowser_photos_path }}:/srv/photos"
+          - "{{ filebrowser_private_path }}:/srv/private"
+          - "{{ filebrowser_database_path }}:/database"
+          - "{{ filebrowser_config_path }}:/config"
+      register: filebrowser_container
+
+    - name: Check if the Filebrowser container is running
+      debug:
+        msg: "Filebrowser container is running with name: {{ filebrowser_container_name }}"
+      when: filebrowser_container.changed
