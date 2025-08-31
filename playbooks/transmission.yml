@@ -50,7 +50,7 @@
           PGID: "{{ group_id.stdout }}"
           TZ: "{{ transmission_timezone }}"
           USER: "{{ transmission_user }}"
-          PASS: "{{ transmission_pwd }}"
+          PASS: "{{ password }}"
         volumes:
           - "{{ transmission_config_path }}:/config"
           - "{{ transmission_downloads_path }}:/downloads"

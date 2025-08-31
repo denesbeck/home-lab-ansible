@@ -29,16 +29,15 @@
       expect:
         command: smbpasswd -a smbuser
         responses:
-          "New SMB password:": "{{ samba_pwd }}"
-          "Retype new SMB password:": "{{ samba_pwd }}"
+          "New SMB password:": "{{ password }}"
+          "Retype new SMB password:": "{{ password }}"
       register: smbpasswd_result
-      no_log: true
 
     - name: Ensure smbpasswd was successful
       debug:
         msg: "Samba user added with password"
-      when: smbpasswd_result.rc == 0
-      failed_when: smbpasswd_result.rc != 0
+      when: smbpasswd_result == 0
+      failed_when: smbpasswd_result != 0
 
     - name: Backup current smb.conf
       copy:
