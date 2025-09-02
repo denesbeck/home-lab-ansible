@@ -1,0 +1,25 @@
+---
+- name: Set custom SSH configuration
+  hosts: all
+  become: yes
+  vars_files:
+    - ../vars/ssh.yml
+
+  tasks:
+    - name: Ensure sshd_config file is set from Jinja2 template
+      template:
+        src: ../config/ssh.j2
+        dest: /etc/ssh/sshd_config
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Reload systemd daemon to apply configuration changes
+      command:
+        cmd: systemctl daemon-reload
+        creates: /etc/ssh/sshd_config
+
+    - name: Restart SSH service to apply new configuration
+      command:
+        cmd: systemctl restart ssh.socket
+        creates: /etc/ssh/sshd_config

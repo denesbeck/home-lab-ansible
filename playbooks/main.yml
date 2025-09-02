@@ -4,6 +4,7 @@
 - import_playbook: ./samba.yml
 - import_playbook: ./docker.yml
 - import_playbook: ./nginx.yml
+- import_playbook: ./ssh.yml
 - import_playbook: ./ufw.yml
 - import_playbook: ./transmission.yml
 - import_playbook: ./filebrowser.yml
