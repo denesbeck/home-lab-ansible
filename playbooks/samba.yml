@@ -36,8 +36,8 @@
     - name: Ensure smbpasswd was successful
       debug:
         msg: "Samba user added with password"
-      when: smbpasswd_result == 0
-      failed_when: smbpasswd_result != 0
+      when: smbpasswd_result.rc == 0
+      failed_when: smbpasswd_result.rc != 0
 
     - name: Backup current smb.conf
       copy:
