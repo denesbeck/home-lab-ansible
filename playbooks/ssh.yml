@@ -14,6 +14,11 @@
         group: root
         mode: "0644"
 
+    - name: Validate SSH configuration
+      command: sshd -t
+      register: sshd_config_test
+      failed_when: sshd_config_test.rc != 0
+
     - name: Reload systemd daemon to apply configuration changes
       command:
         cmd: systemctl daemon-reload
