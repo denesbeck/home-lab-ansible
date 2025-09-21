@@ -29,18 +29,18 @@
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
 
+    - name: Clone home-lab-monitoring repository
+      git:
+        repo: https://github.com/denesbeck/home-lab-monitoring
+        dest: /home/monitoring
+        depth: 1
+
     - name: Ensure ownership of /home/monitoring is set
       file:
         path: /home/monitoring
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
         recurse: yes
-
-    - name: Clone home-lab-monitoring repository
-      git:
-        repo: https://github.com/denesbeck/home-lab-monitoring
-        dest: /home/monitoring
-        depth: 1
 
     - name: Run git config command to add safe.directory
       command: git config --global --add safe.directory /home/monitoring
