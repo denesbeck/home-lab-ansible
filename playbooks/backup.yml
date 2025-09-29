@@ -114,6 +114,14 @@
         job: "{{ backup_script_path }} >> /var/log/backup-photos.log 2>&1"
         state: present
 
+    - name: Setup daily restart cronjob at 3 AM
+      cron:
+        name: "Daily restart"
+        minute: "0"
+        hour: "3"
+        job: "shutdown -r now"
+        state: present
+
     - name: Verify backup script is executable
       file:
         path: "{{ backup_script_path }}"
