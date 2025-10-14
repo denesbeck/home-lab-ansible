@@ -6,3 +6,4 @@
 - import_playbook: ./nginx.yml
 - import_playbook: ./ufw.yml
 - import_playbook: ./transmission.yml
+- import_playbook: ./filebrowser.yml
