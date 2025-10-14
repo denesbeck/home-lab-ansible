@@ -1,4 +1,3 @@
----
 - name: Install and configure Samba
   hosts: all
   become: yes
@@ -11,16 +10,35 @@
         state: present
         update_cache: yes
 
-    - name: Create samba user and group
-      user:
-        name: smbuser
-        state: present
-        create_home: no
-
     - name: Create samba group
       group:
         name: smbgroup
         state: present
+
+    - name: Create samba user and group
+      user:
+        name: smbuser
+        group: smbgroup
+        state: present
+        create_home: false
+        shell: /bin/bash
+
+    - import_tasks: ../tasks/generate-password.yml
+
+    - name: Add samba user with generated password
+      expect:
+        command: smbpasswd -a smbuser
+        responses:
+          "New SMB password:": "{{ samba_pwd }}"
+          "Retype new SMB password:": "{{ samba_pwd }}"
+      register: smbpasswd_result
+      no_log: true
+
+    - name: Ensure smbpasswd was successful
+      debug:
+        msg: "Samba user added with password"
+      when: smbpasswd_result.rc == 0
+      failed_when: smbpasswd_result.rc != 0
 
     - name: Backup current smb.conf
       copy:
@@ -28,7 +46,6 @@
         dest: "/etc/samba/smb.conf.bak.{{ ansible_date_time.date | replace('-', '') }}{{ ansible_date_time.hour }}{{ ansible_date_time.minute }}{{ ansible_date_time.second }}"
         remote_src: yes
         backup: yes
-      when: ansible_facts['os_family'] == "Debian"
 
     - name: Configure smb.conf with custom settings
       template:

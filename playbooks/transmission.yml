@@ -29,9 +29,7 @@
       register: group_id
       changed_when: false
 
-    - name: Generate a random password for Transmission
-      set_fact:
-        transmission_pwd: "{{ lookup('ansible.builtin.password', '/dev/null', length=16, special=false) }}"
+    - import_tasks: ../tasks/generate-password.yml
 
     - name: Ensure Transmission container is running
       docker_container:
