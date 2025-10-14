@@ -3,7 +3,7 @@
   hosts: all
   become: yes
   vars_files:
-    - ../vars/ports.yml
+    - ../vars/ssh.yml
   tasks:
     - name: Ensure UFW is installed
       apt:
@@ -20,7 +20,7 @@
     - name: Allow SSH port
       ufw:
         rule: allow
-        port: "{{ ssh }}"
+        port: "{{ ssh_port }}"
 
     - name: Allow SMB port 445
       ufw:
