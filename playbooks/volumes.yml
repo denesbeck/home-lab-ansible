@@ -16,6 +16,7 @@
         - /mnt/private
         - /mnt/photos
         - /mnt/movies
+        - /mnt/backups
 
     - name: Set permissions directories
       file:
@@ -28,6 +29,7 @@
         - /mnt/private
         - /mnt/photos
         - /mnt/movies
+        - /mnt/backups
 
     - name: Add /mnt/private to /etc/fstab
       lineinfile:
@@ -47,5 +49,12 @@
       lineinfile:
         path: /etc/fstab
         line: "{{ movies_mount }}"
+        create: yes
+        state: present
+
+    - name: Add /mnt/backups to /etc/fstab
+      lineinfile:
+        path: /etc/fstab
+        line: "{{ backups_mount }}"
         create: yes
         state: present
