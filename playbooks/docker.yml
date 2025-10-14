@@ -4,9 +4,7 @@
   become: yes
 
   tasks:
-    - name: Update apt package list
-      apt:
-        update_cache: yes
+    - import_tasks: ../tasks/update-packages.yml
 
     - name: Install required packages for Docker
       apt:
