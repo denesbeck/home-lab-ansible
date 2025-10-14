@@ -62,6 +62,9 @@
           # Create backup directory
           mkdir -p "$BACKUP_DIR"
           
+          # Make sure that the backup directory is owned by the ansible_user
+          chown {{ ansible_user }}:{{ ansible_user }} $BACKUP_DIR
+
           # Perform backup using rsync
           if rsync -aAXHvS "$SOURCE/" "$BACKUP_DIR/"; then
               log_message "Backup completed successfully to $BACKUP_DIR"
