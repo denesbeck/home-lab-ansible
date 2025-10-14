@@ -1,0 +1,65 @@
+---
+- name: Set up Transmission container
+  hosts: all
+  become: yes
+  vars_files:
+    - ../vars/transmission.yml
+
+  tasks:
+    - name: Create necessary directories for Transmission container
+      file:
+        path: "{{ item }}"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        state: directory
+        mode: "0755"
+        recurse: yes
+      loop:
+        - "{{ transmission_config_path }}"
+        - "{{ transmission_downloads_path }}"
+        - "{{ transmission_watch_path }}"
+
+    - name: Gather user ID (PUID)
+      command: "id -u {{ ansible_user }}"
+      register: user_id
+      changed_when: false
+
+    - name: Gather group ID (PGID)
+      command: "id -g {{ ansible_user }}"
+      register: group_id
+      changed_when: false
+
+    - name: Generate a random password for Transmission
+      set_fact:
+        transmission_pwd: "{{ lookup('ansible.builtin.password', '/dev/null', length=16, special=false) }}"
+
+    - name: Ensure Transmission container is running
+      docker_container:
+        name: "{{ transmission_container_name }}"
+        image: "{{ transmission_image }}"
+        state: started
+        restart_policy: unless-stopped
+        exposed_ports:
+          - "9091"
+          - "51413"
+          - "51413/udp"
+        published_ports:
+          - "127.0.0.1:9091:9091"
+          - "127.0.0.1:51413:51413"
+          - "127.0.0.1:51413/udp:51413/udp"
+        env:
+          PUID: "{{ user_id.stdout }}"
+          PGID: "{{ group_id.stdout }}"
+          TZ: "{{ transmission_timezone }}"
+          USER: "{{ transmission_user }}"
+          PASS: "{{ transmission_pwd }}"
+        volumes:
+          - "{{ transmission_config_path }}:/config"
+          - "{{ transmission_downloads_path }}:/downloads"
+          - "{{ transmission_watch_path }}:/watch"
+      register: transmission_container
+
+    - name: Check if the Transmission container is running
+      debug:
+        msg: "Transmission container is running with name: {{ transmission_container_name }}"
+      when: transmission_container.changed
