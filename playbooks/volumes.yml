@@ -1,0 +1,51 @@
+---
+- name: Setup and mount volumes
+  hosts: all
+  become: yes
+  vars_files:
+    - ../vars/fstab.yml
+  tasks:
+    - name: Create directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0775"
+      loop:
+        - /mnt/private
+        - /mnt/photos
+        - /mnt/movies
+
+    - name: Set permissions directories
+      file:
+        path: "{{ item }}"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0775"
+        recurse: yes
+      loop:
+        - /mnt/private
+        - /mnt/photos
+        - /mnt/movies
+
+    - name: Add /mnt/private to /etc/fstab
+      lineinfile:
+        path: /etc/fstab
+        line: "{{ private_mount }}"
+        create: yes
+        state: present
+
+    - name: Add /mnt/photos to /etc/fstab
+      lineinfile:
+        path: /etc/fstab
+        line: "{{ photos_mount }}"
+        create: yes
+        state: present
+
+    - name: Add /mnt/movies to /etc/fstab
+      lineinfile:
+        path: /etc/fstab
+        line: "{{ movies_mount }}"
+        create: yes
+        state: present

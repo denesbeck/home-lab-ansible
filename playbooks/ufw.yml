@@ -1,0 +1,37 @@
+---
+- name: Configure UFW and Allow Custom Ports
+  hosts: all
+  become: yes
+  vars_files:
+    - ../vars/ports.yml
+  tasks:
+    - name: Ensure UFW is installed
+      apt:
+        name: ufw
+        state: present
+        update_cache: yes
+
+    - name: Disable all incoming traffic
+      ufw:
+        state: enabled
+        default: deny
+        direction: incoming
+
+    - name: Allow SSH port
+      ufw:
+        rule: allow
+        port: "{{ ssh }}"
+
+    - name: Allow SMB port 445
+      ufw:
+        rule: allow
+        port: 445
+
+    - name: Allow Nginx Full
+      ufw:
+        rule: allow
+        name: "Nginx Full"
+
+    - name: Reload UFW to apply changes
+      ufw:
+        state: reloaded
