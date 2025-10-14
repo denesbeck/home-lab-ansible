@@ -8,6 +8,7 @@
     backup_destination: /mnt/backups
     backup_script_path: /usr/local/bin/backup-photos.sh
     backup_user: "{{ ansible_user }}"
+    backup_group: "{{ ansible_user }}"
 
   tasks:
     - name: Ensure backup destination directory exists
@@ -15,7 +16,7 @@
         path: "{{ backup_destination }}"
         state: directory
         owner: "{{ backup_user }}"
-        group: "{{ backup_user }}"
+        group: "{{ backup_group }}"
         mode: '0755'
 
     - name: Create backup script
@@ -100,7 +101,7 @@
         path: /var/log/backup-photos.log
         state: touch
         owner: "{{ backup_user }}"
-        group: "{{ backup_user }}"
+        group: "{{ backup_group }}"
         mode: '0644'
 
     - name: Setup daily backup cronjob at 1 AM
