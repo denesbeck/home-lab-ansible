@@ -9,3 +9,4 @@
 - import_playbook: ./transmission.yml
 - import_playbook: ./filebrowser.yml
 - import_playbook: ./backup.yml
+- import_playbook: ./monitoring.yml
