@@ -1,7 +1,7 @@
 ---
 - name: Restart all Ubuntu servers
   hosts: all
-  become: yes
+  become: true
   tasks:
     - name: Restart the server
       command: shutdown -r now

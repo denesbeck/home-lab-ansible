@@ -1,7 +1,7 @@
 ---
 - name: Update and upgrade Ubuntu system
   hosts: all
-  become: yes
+  become: true
   tasks:
     - import_tasks: ../tasks/update-packages.yml
 

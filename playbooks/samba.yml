@@ -1,6 +1,6 @@
 - name: Install and configure Samba
   hosts: all
-  become: yes
+  become: true
   tasks:
     - import_tasks: ../tasks/update-packages.yml
 

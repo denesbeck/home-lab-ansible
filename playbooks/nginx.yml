@@ -1,7 +1,7 @@
 ---
 - name: Set up NGINX with SSL and custom configuration
   hosts: all
-  become: yes
+  become: true
 
   vars:
     ssl_country: "US"

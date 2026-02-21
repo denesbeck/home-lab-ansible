@@ -1,7 +1,7 @@
 ---
 - name: Setup and mount volumes
   hosts: all
-  become: yes
+  become: true
   vars_files:
     - ../vars/fstab.yml
   tasks:

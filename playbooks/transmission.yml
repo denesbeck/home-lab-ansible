@@ -1,7 +1,7 @@
 ---
 - name: Set up Transmission container
   hosts: all
-  become: yes
+  become: true
   vars_files:
     - ../vars/transmission.yml
 

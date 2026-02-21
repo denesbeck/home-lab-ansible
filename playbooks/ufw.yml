@@ -1,7 +1,7 @@
 ---
 - name: Configure UFW and Allow Custom Ports
   hosts: all
-  become: yes
+  become: true
   vars_files:
     - ../vars/ssh.yml
   tasks:

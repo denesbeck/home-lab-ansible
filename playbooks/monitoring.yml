@@ -1,7 +1,7 @@
 ---
 - name: Set up Prometheus/Grafana monitoring stack
   hosts: all
-  become: yes
+  become: true
 
   tasks:
     - name: Install Git

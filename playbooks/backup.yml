@@ -1,7 +1,7 @@
 ---
 - name: Setup daily photo backup with rotation
   hosts: all
-  become: yes
+  become: true
 
   vars:
     backup_source: /mnt/photos

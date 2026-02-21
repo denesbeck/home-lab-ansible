@@ -1,7 +1,7 @@
 ---
 - name: Full Docker reset
   hosts: all
-  become: yes
+  become: true
   tasks:
     - name: Stop all running containers
       shell: |
