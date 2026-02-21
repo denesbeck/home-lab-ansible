@@ -1,0 +1,47 @@
+---
+- name: Set up ErsatzTV and Jellyfin
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Install Git
+      apt:
+        name: git
+        state: present
+
+    - name: Check if Docker is installed
+      command: docker --version
+      register: docker_version
+      failed_when: docker_version.rc != 0
+      changed_when: false
+
+    - name: Check if Docker Compose is installed
+      command: docker compose version
+      register: docker_compose_version
+      failed_when: docker_compose_version.rc != 0
+      changed_when: false
+
+    - name: Clone home-lab-media-server repository
+      git:
+        repo: git@github.com:denesbeck/home-lab-media-server.git
+        dest: /home/media-server
+        depth: 1
+        key_file: /home/nothingmuch/.ssh/id_ed25519_hlms
+        accept_hostkey: true
+
+    - name: Ensure ownership of /home/media-server is set
+      file:
+        path: /home/media-server
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        recurse: yes
+
+    - name: Run git config command to add safe.directory to /home/media-server
+      command: git config --global --add safe.directory /home/media-server
+      args:
+        chdir: /home/media-server
+
+    - name: Run Docker Compose to start services
+      command: docker compose up -d
+      args:
+        chdir: /home/media-server
