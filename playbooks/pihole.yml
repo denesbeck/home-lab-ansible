@@ -1,0 +1,92 @@
+---
+- name: Set up Pi-hole container
+  hosts: all
+  become: true
+  vars_files:
+    - ../vars/pihole.yml
+
+  tasks:
+    - name: Create Pi-hole configuration directory
+      file:
+        path: "{{ pihole_config_path }}"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        state: directory
+        mode: "0755"
+        recurse: yes
+
+    - name: Disable systemd-resolved DNS stub listener
+      lineinfile:
+        path: /etc/systemd/resolved.conf
+        regexp: '^#?DNSStubListener='
+        line: 'DNSStubListener=no'
+      register: resolved_conf
+
+    - name: Remove existing /etc/resolv.conf
+      file:
+        path: /etc/resolv.conf
+        state: absent
+      when: resolved_conf.changed
+
+    - name: Symlink resolv.conf to systemd-resolved runtime config
+      file:
+        src: /run/systemd/resolve/resolv.conf
+        dest: /etc/resolv.conf
+        state: link
+        force: true
+      when: resolved_conf.changed
+
+    - name: Restart systemd-resolved service
+      systemd:
+        name: systemd-resolved
+        state: restarted
+      when: resolved_conf.changed
+
+    - import_tasks: ../tasks/generate-password.yml
+
+    - name: Ensure Pi-hole container is running
+      docker_container:
+        name: "{{ pihole_container_name }}"
+        image: "{{ pihole_image }}"
+        state: started
+        restart_policy: unless-stopped
+        published_ports:
+          - "{{ pihole_dns_host }}:53:53/tcp"
+          - "{{ pihole_dns_host }}:53:53/udp"
+          - "127.0.0.1:{{ pihole_web_port }}:80/tcp"
+        env:
+          TZ: "{{ pihole_timezone }}"
+          FTLCONF_webserver_api_password: "{{ password }}"
+          FTLCONF_dns_listeningMode: "ALL"
+          FTLCONF_dns_upstreams: "{{ pihole_dns_upstream }}"
+        volumes:
+          - "{{ pihole_config_path }}:/etc/pihole"
+        capabilities:
+          - NET_BIND_SERVICE
+      register: pihole_container
+
+    - name: Check if the Pi-hole container is running
+      debug:
+        msg: "Pi-hole container is running with name: {{ pihole_container_name }}"
+      when: pihole_container.changed
+
+    - name: Wait for Pi-hole to be ready
+      command: "docker exec {{ pihole_container_name }} pihole status"
+      register: pihole_status
+      until: pihole_status.rc == 0
+      retries: 10
+      delay: 5
+      changed_when: false
+
+    - name: Build local DNS records JSON array
+      set_fact:
+        pihole_dns_hosts_json: "{{ pihole_local_dns_records | map(attribute='domain') | map('regex_replace', '^(.*)$', pihole_dns_host ~ ' \\1') | list | to_json }}"
+
+    - name: Check existing local DNS records
+      shell: "docker exec {{ pihole_container_name }} pihole-FTL --config dns.hosts"
+      register: existing_dns_records
+      changed_when: false
+
+    - name: Set local DNS records via Pi-hole CLI
+      shell: "docker exec {{ pihole_container_name }} pihole-FTL --config dns.hosts '{{ pihole_dns_hosts_json }}'"
+      when: existing_dns_records.stdout | trim != pihole_dns_hosts_json | trim
