@@ -1,0 +1,34 @@
+---
+- name: Set up Portainer container
+  hosts: all
+  become: true
+  vars_files:
+    - ../vars/portainer.yml
+
+  tasks:
+    - name: Create Portainer data directory
+      file:
+        path: "{{ portainer_data_path }}"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        state: directory
+        mode: "0755"
+        recurse: yes
+
+    - name: Ensure Portainer container is running
+      docker_container:
+        name: "{{ portainer_container_name }}"
+        image: "portainer/portainer-ce:sts"
+        state: started
+        restart_policy: always
+        published_ports:
+          - "127.0.0.1:9000:9000"
+        volumes:
+          - "/var/run/docker.sock:/var/run/docker.sock"
+          - "{{ portainer_data_path }}:/data"
+      register: portainer_container
+
+    - name: Check if the Portainer container is running
+      debug:
+        msg: "Portainer container is running with name: {{ portainer_container_name }}"
+      when: portainer_container.changed
