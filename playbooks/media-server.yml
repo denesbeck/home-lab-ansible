@@ -3,12 +3,10 @@
   hosts: all
   become: true
 
-  tasks:
-    - name: Install Git
-      apt:
-        name: git
-        state: present
+  vars_files:
+    - ../vars/media-server.yml
 
+  tasks:
     - name: Check if Docker is installed
       command: docker --version
       register: docker_version
@@ -21,27 +19,125 @@
       failed_when: docker_compose_version.rc != 0
       changed_when: false
 
-    - name: Clone home-lab-media-server repository
-      git:
-        repo: git@github.com:denesbeck/home-lab-media-server.git
-        dest: /home/media-server
-        depth: 1
-        key_file: /home/nothingmuch/.ssh/id_ed25519_hlms
-        accept_hostkey: true
-
-    - name: Ensure ownership of /home/media-server is set
+    - name: Ensure media-server directory exists
       file:
-        path: /home/media-server
+        path: "{{ media_server_path }}"
+        state: directory
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
-        recurse: yes
+        mode: "0755"
 
-    - name: Run git config command to add safe.directory to /home/media-server
-      command: git config --global --add safe.directory /home/media-server
-      args:
-        chdir: /home/media-server
+    - name: Create docker-compose.yml from template
+      template:
+        src: ../config/docker-compose-media-server.yml.j2
+        dest: "{{ media_server_path }}/docker-compose.yml"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0644"
 
     - name: Run Docker Compose to start services
       command: docker compose up -d
       args:
-        chdir: /home/media-server
+        chdir: "{{ media_server_path }}"
+
+    - name: Ensure ErsatzTV backup destination directory exists
+      file:
+        path: "{{ ersatztv_backup_destination }}"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0755"
+
+    - name: Create ErsatzTV config backup script
+      copy:
+        dest: "{{ ersatztv_backup_script_path }}"
+        mode: "0755"
+        owner: root
+        group: root
+        content: |
+          #!/bin/bash
+
+          # ErsatzTV config backup script with rotation
+          # Backs up {{ ersatztv_config_path }} to {{ ersatztv_backup_destination }}/ersatztv_<timestamp>
+          # Keeps only the last 3 backups
+
+          set -euo pipefail
+
+          SOURCE="{{ ersatztv_config_path }}"
+          BACKUP_BASE="{{ ersatztv_backup_destination }}"
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          BACKUP_DIR="${BACKUP_BASE}/ersatztv_${TIMESTAMP}"
+          LOG_FILE="/var/log/backup-ersatztv.log"
+
+          log_message() {
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+          }
+
+          if [[ ! -d "$SOURCE" ]]; then
+              log_message "ERROR: Source directory $SOURCE does not exist"
+              exit 1
+          fi
+
+          if [[ ! -d "$BACKUP_BASE" ]]; then
+              log_message "ERROR: Backup base directory $BACKUP_BASE does not exist"
+              exit 1
+          fi
+
+          log_message "Starting backup of $SOURCE to $BACKUP_DIR"
+
+          mkdir -p "$BACKUP_DIR"
+          chown {{ ansible_user }}:{{ ansible_user }} "$BACKUP_DIR"
+
+          if rsync -aAXHvS "$SOURCE/" "$BACKUP_DIR/"; then
+              log_message "Backup completed successfully to $BACKUP_DIR"
+          else
+              log_message "ERROR: Backup failed"
+              rm -rf "$BACKUP_DIR"
+              exit 1
+          fi
+
+          # Rotation: Keep only the last 3 backups
+          log_message "Starting backup rotation (keeping last 3 backups)"
+
+          find "$BACKUP_BASE" -maxdepth 1 -type d -name "ersatztv_*" | \
+              sort -nr | \
+              tail -n +4 | \
+              while IFS= read -r old_backup; do
+                  if [[ -n "$old_backup" && "$old_backup" != "$BACKUP_BASE" ]]; then
+                      log_message "Removing old backup: $old_backup"
+                      rm -rf "$old_backup"
+                  fi
+              done
+
+          log_message "Backup rotation completed"
+
+          log_message "Current backups:"
+          find "$BACKUP_BASE" -maxdepth 1 -type d -name "ersatztv_*" -printf '%TY-%Tm-%Td %TH:%TM:%TS %p\n' | sort -r | tee -a "$LOG_FILE"
+
+          log_message "Backup process finished successfully"
+
+    - name: Create ErsatzTV backup log file
+      file:
+        path: /var/log/backup-ersatztv.log
+        state: touch
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Setup daily ErsatzTV config backup cronjob at 2 AM
+      cron:
+        name: "Daily ErsatzTV config backup"
+        minute: "0"
+        hour: "2"
+        job: "{{ ersatztv_backup_script_path }} >> /var/log/backup-ersatztv.log 2>&1"
+        state: present
+
+    - name: Display ErsatzTV backup configuration
+      debug:
+        msg:
+          - "Backup script created at: {{ ersatztv_backup_script_path }}"
+          - "Source directory: {{ ersatztv_config_path }}"
+          - "Backup destination: {{ ersatztv_backup_destination }}"
+          - "Cronjob scheduled: Daily at 2:00 AM"
+          - "Log file: /var/log/backup-ersatztv.log"
+          - "Backup retention: Last 3 backups"
