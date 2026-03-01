@@ -32,6 +32,12 @@
         rule: allow
         name: "Nginx Full"
 
+    - name: Allow incoming traffic on Tailscale interface
+      ufw:
+        rule: allow
+        interface: tailscale0
+        direction: in
+
     - name: Reload UFW to apply changes
       ufw:
         state: reloaded

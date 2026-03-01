@@ -50,10 +50,18 @@
         image: "{{ pihole_image }}"
         state: started
         restart_policy: unless-stopped
-        published_ports:
-          - "{{ pihole_dns_host }}:53:53/tcp"
-          - "{{ pihole_dns_host }}:53:53/udp"
-          - "127.0.0.1:{{ pihole_web_port }}:80/tcp"
+        published_ports: >-
+          {{
+            pihole_dns_hosts
+            | map('regex_replace', '^(.*)$', '\1:53:53/tcp')
+            | list
+            +
+            pihole_dns_hosts
+            | map('regex_replace', '^(.*)$', '\1:53:53/udp')
+            | list
+            +
+            ['127.0.0.1:' ~ pihole_web_port ~ ':80/tcp']
+          }}
         env:
           TZ: "{{ pihole_timezone }}"
           FTLCONF_webserver_api_password: "{{ password }}"
@@ -80,7 +88,14 @@
 
     - name: Build local DNS records JSON array
       set_fact:
-        pihole_dns_hosts_json: "{{ pihole_local_dns_records | map(attribute='domain') | map('regex_replace', '^(.*)$', pihole_dns_host ~ ' \\1') | list | to_json }}"
+        pihole_dns_hosts_json: >-
+          {{
+            pihole_dns_hosts
+            | product(pihole_local_dns_records | map(attribute='domain'))
+            | map('join', ' ')
+            | list
+            | to_json
+          }}
 
     - name: Check existing local DNS records
       shell: "docker exec {{ pihole_container_name }} pihole-FTL --config dns.hosts"

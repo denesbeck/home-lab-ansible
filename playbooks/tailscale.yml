@@ -1,0 +1,63 @@
+---
+- name: Install and Configure Tailscale
+  hosts: all
+  become: true
+  vars_files:
+    - ../vars/tailscale.yml
+  tasks:
+    - import_tasks: ../tasks/update-packages.yml
+
+    - name: Install required packages for Tailscale
+      apt:
+        name:
+          - ca-certificates
+          - curl
+        state: present
+
+    - name: Create directory for keyrings
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Get Ubuntu codename
+      shell: . /etc/os-release && echo ${UBUNTU_CODENAME:-$VERSION_CODENAME}
+      register: ubuntu_codename
+      changed_when: false
+
+    - name: Add Tailscale GPG key
+      get_url:
+        url: "https://pkgs.tailscale.com/stable/ubuntu/{{ ubuntu_codename.stdout }}.noarmor.gpg"
+        dest: /etc/apt/keyrings/tailscale-archive-keyring.gpg
+        mode: "0644"
+
+    - name: Add Tailscale apt repository
+      apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/ubuntu {{ ubuntu_codename.stdout }} main"
+        state: present
+        filename: tailscale
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Tailscale
+      apt:
+        name: tailscale
+        state: present
+
+    - name: Enable and start tailscaled
+      systemd:
+        name: tailscaled
+        enabled: true
+        state: started
+
+    - name: Check if Tailscale is already authenticated
+      command: tailscale status
+      register: tailscale_status
+      ignore_errors: true
+      changed_when: false
+
+    - name: Authenticate Tailscale
+      command: "tailscale up --auth-key={{ tailscale_auth_key }} --accept-dns=false"
+      when: tailscale_status.rc != 0

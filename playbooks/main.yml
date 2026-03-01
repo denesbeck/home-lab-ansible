@@ -10,3 +10,4 @@
 - import_playbook: ./filebrowser.yml
 - import_playbook: ./backup.yml
 - import_playbook: ./monitoring.yml
+- import_playbook: ./portainer.yml
