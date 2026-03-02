@@ -66,6 +66,36 @@
         group: docker
         append: yes
 
+    - name: Create Docker systemd override directory
+      file:
+        path: /etc/systemd/system/docker.service.d
+        state: directory
+        mode: "0755"
+
+    - name: Deploy wait_for_network script
+      copy:
+        src: ../scripts/wait_for_network.sh
+        dest: /etc/systemd/system/docker.service.d/wait_for_network.sh
+        mode: "0755"
+
+    - name: Add systemd override to wait for network before Docker
+      copy:
+        dest: /etc/systemd/system/docker.service.d/override.conf
+        content: |
+          [Unit]
+          Requires=network-online.target docker.socket
+          After=network-online.target tailscaled.service
+
+          [Service]
+          ExecStartPre=/etc/systemd/system/docker.service.d/wait_for_network.sh
+        mode: "0644"
+      register: docker_override
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+      when: docker_override.changed
+
     - name: Restart Docker service
       service:
         name: docker
