@@ -90,9 +90,9 @@
       set_fact:
         pihole_dns_hosts_json: >-
           {{
-            pihole_dns_hosts
-            | product(pihole_local_dns_records | map(attribute='domain'))
-            | map('join', ' ')
+            pihole_local_dns_records
+            | map(attribute='domain')
+            | map('regex_replace', '^(.*)$', pihole_local_dns_ip ~ ' \1')
             | list
             | to_json
           }}

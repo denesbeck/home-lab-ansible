@@ -46,6 +46,17 @@
         name: tailscale
         state: present
 
+    - name: Enable IP forwarding for subnet routing
+      sysctl:
+        name: "{{ item }}"
+        value: "1"
+        sysctl_set: yes
+        state: present
+        reload: yes
+      loop:
+        - net.ipv4.ip_forward
+        - net.ipv6.conf.all.forwarding
+
     - name: Enable and start tailscaled
       systemd:
         name: tailscaled
@@ -59,5 +70,11 @@
       changed_when: false
 
     - name: Authenticate Tailscale
-      command: "tailscale up --auth-key={{ tailscale_auth_key }} --accept-dns=false"
+      command: "tailscale up --auth-key={{ tailscale_auth_key }} --accept-dns=false --advertise-routes={{ tailscale_advertise_routes }}"
       when: tailscale_status.rc != 0
+
+    - name: Ensure subnet routes are advertised (if already authenticated)
+      command: "tailscale set --advertise-routes={{ tailscale_advertise_routes }}"
+      when: tailscale_status.rc == 0
+      register: tailscale_set_routes
+      changed_when: tailscale_set_routes.rc == 0
