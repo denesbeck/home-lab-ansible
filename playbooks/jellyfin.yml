@@ -31,6 +31,9 @@
         image: jellyfin/jellyfin
         state: started
         restart_policy: unless-stopped
+        memory: "{{ jellyfin_memory_limit }}"
+        memory_swap: "{{ jellyfin_memory_limit }}"
+        cpus: "{{ jellyfin_cpu_limit }}"
         published_ports:
           - "127.0.0.1:8096:8096"
         env:
