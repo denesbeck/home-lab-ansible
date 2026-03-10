@@ -1,0 +1,87 @@
+---
+- name: Setup UPS power monitor
+  hosts: all
+  become: true
+
+  vars_files:
+    - ../vars/ups-monitor.yml
+
+  vars:
+    power_monitor_script_dest: /usr/local/bin/power-monitor.sh
+    power_monitor_log: /var/log/power-monitor.log
+    ping_interval: 30
+    max_failures: 10
+
+  tasks:
+    - name: Deploy power monitor script
+      copy:
+        dest: "{{ power_monitor_script_dest }}"
+        owner: root
+        group: root
+        mode: "0755"
+        content: |
+          #!/bin/bash
+
+          # Power monitor script for UPS-protected server
+          # Pings the router every {{ ping_interval }} seconds. After {{ max_failures }} consecutive
+          # failed attempts, initiates a graceful shutdown (indicates
+          # power outage — router is off, server is running on UPS).
+
+          set -euo pipefail
+
+          ROUTER_IP="{{ router_ip }}"
+          PING_INTERVAL={{ ping_interval }}
+          MAX_FAILURES={{ max_failures }}
+          LOG_FILE="{{ power_monitor_log }}"
+
+          log_message() {
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+          }
+
+          fail_count=0
+
+          while true; do
+              if ping -c 1 -W 5 "$ROUTER_IP" > /dev/null 2>&1; then
+                  if [ "$fail_count" -gt 0 ]; then
+                      log_message "Router reachable again. Resetting fail counter (was $fail_count)."
+                      fail_count=0
+                  fi
+              else
+                  fail_count=$((fail_count + 1))
+                  log_message "Ping to $ROUTER_IP failed ($fail_count/$MAX_FAILURES)."
+
+                  if [ "$fail_count" -ge "$MAX_FAILURES" ]; then
+                      log_message "CRITICAL: $MAX_FAILURES consecutive ping failures. Initiating shutdown."
+                      /sbin/shutdown -h now "Power monitor: router unreachable, assuming power outage."
+                      exit 0
+                  fi
+              fi
+
+              sleep "$PING_INTERVAL"
+          done
+
+    - name: Create log file with proper permissions
+      file:
+        path: "{{ power_monitor_log }}"
+        state: touch
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Setup power monitor cronjob at reboot
+      cron:
+        name: "UPS power monitor"
+        special_time: reboot
+        job: "{{ power_monitor_script_dest }} >> {{ power_monitor_log }} 2>&1"
+        state: present
+
+    - name: Display power monitor configuration
+      debug:
+        msg:
+          - "Power monitor script deployed to: {{ power_monitor_script_dest }}"
+          - "Router IP: {{ router_ip }}"
+          - "Ping interval: {{ ping_interval }} seconds"
+          - "Failure threshold: {{ max_failures }} consecutive failures"
+          - "Action on threshold: graceful shutdown"
+          - "Cronjob: runs at every reboot"
+          - "Log file: {{ power_monitor_log }}"
