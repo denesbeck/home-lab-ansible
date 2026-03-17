@@ -20,7 +20,8 @@ Internet / Tailscale VPN
          ├──► Prometheus     (:9090)   metrics
          ├──► Transmission   (:9091)   torrent client
          ├──► Filebrowser    (:8080)   web file manager
-         └──► Jellyfin       (:8096)   media server
+         ├──► Jellyfin       (:8096)   media server
+         └──► NetAlertX      (host)    network scanner
 ```
 
 ## Services
@@ -34,6 +35,7 @@ Internet / Tailscale VPN
 | **Transmission** | Docker | `transmission.arcade-lab.io` | BitTorrent client |
 | **Filebrowser** | Docker | `filebrowser.arcade-lab.io` | Web-based file manager for movies, photos, and private storage |
 | **Jellyfin** | Docker | `jellyfin.arcade-lab.io` | Media server (4GB RAM, 4 CPU limit) |
+| **NetAlertX** | Docker | `netalertx.arcade-lab.io` | Network scanner and alerter (host network mode) |
 | **NGINX** | Native | — | Reverse proxy with SSL for all services |
 | **Samba** | Native | — | SMB3 file sharing (3 shares: private, photos, movies) |
 | **Tailscale** | Native | — | VPN with subnet routing for remote access |
@@ -59,6 +61,7 @@ Internet / Tailscale VPN
 │   ├── filebrowser.yml      # Filebrowser container
 │   ├── jellyfin.yml         # Jellyfin media server container
 │   ├── monitoring.yml       # Prometheus/Grafana stack
+│   ├── netalertx.yml        # NetAlertX network scanner container
 │   ├── nginx.yml            # NGINX reverse proxy + SSL
 │   ├── pihole.yml           # Pi-hole DNS container
 │   ├── portainer.yml        # Portainer container
@@ -82,6 +85,7 @@ Internet / Tailscale VPN
     ├── filebrowser.yml
     ├── fstab.yml
     ├── jellyfin.yml
+    ├── netalertx.yml
     ├── pihole.yml
     ├── portainer.yml
     ├── ssh.yml
@@ -115,11 +119,12 @@ Run any service playbook independently:
 ```bash
 ansible-playbook playbooks/pihole.yml
 ansible-playbook playbooks/jellyfin.yml
+ansible-playbook playbooks/netalertx.yml
 ansible-playbook playbooks/tailscale.yml
 ansible-playbook playbooks/ups-monitor.yml
 ```
 
-> **Note:** Pi-hole, Jellyfin, Tailscale, and UPS Monitor are not included in `main.yml` and must be run separately.
+> **Note:** Pi-hole, Jellyfin, NetAlertX, Tailscale, and UPS Monitor are not included in `main.yml` and must be run separately.
 
 ### Utility tasks
 
@@ -143,6 +148,7 @@ All variable files live in `vars/` and are gitignored to protect secrets. You ne
 | `vars/tailscale.yml` | Auth key, advertised routes |
 | `vars/pihole.yml` | DNS config, local DNS records, ports |
 | `vars/jellyfin.yml` | Timezone, paths, resource limits |
+| `vars/netalertx.yml` | Container name, image, port, timezone, data path |
 | `vars/transmission.yml` | Container config, download paths |
 | `vars/filebrowser.yml` | Container name, paths |
 | `vars/portainer.yml` | Container name, data path |
