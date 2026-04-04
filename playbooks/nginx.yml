@@ -1,49 +1,63 @@
 ---
-- name: Set up NGINX with SSL and custom configuration
+- name: Set up NGINX with SSL (Let's Encrypt via Cloudflare DNS)
   hosts: all
   become: true
 
+  vars_files:
+    - ../vars/certbot.yml
+
   vars:
-    ssl_country: "US"
-    ssl_state: "California"
-    ssl_city: "San Francisco"
-    ssl_organization: "Home Lab"
-    ssl_common_name: "{{ ansible_default_ipv4.address | default('localhost') }}"
+    certbot_domain: arcade-lab.io
+    certbot_email: "{{ cloudflare_email }}"
+    certbot_credentials_path: /root/.secrets/cloudflare.ini
 
   tasks:
-    - import_tasks: ../tasks/update-packages.yml
-
     - name: Install NGINX
       package:
         name: nginx
         state: present
 
-    - name: Check if SSL certificate exists
-      stat:
-        path: /etc/ssl/certs/nginx-docker.crt
-      register: ssl_cert_exists
+    - name: Install certbot and Cloudflare DNS plugin
+      apt:
+        name:
+          - certbot
+          - python3-certbot-dns-cloudflare
+        state: present
+        update_cache: yes
 
-    - name: Create the self-signed SSL certificate
-      command: >
-        openssl req -x509 -nodes -days 365 -newkey rsa:4096
-        -keyout /etc/ssl/private/nginx-docker.key
-        -out /etc/ssl/certs/nginx-docker.crt
-        -subj "/C={{ ssl_country }}/ST={{ ssl_state }}/L={{ ssl_city }}/O={{ ssl_organization }}/CN={{ ssl_common_name }}"
-      when: not ssl_cert_exists.stat.exists
-
-    - name: Set proper permissions on SSL private key
+    - name: Create secrets directory
       file:
-        path: /etc/ssl/private/nginx-docker.key
+        path: /root/.secrets
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+
+    - name: Deploy Cloudflare API credentials
+      template:
+        src: ../config/cloudflare.ini.j2
+        dest: "{{ certbot_credentials_path }}"
         owner: root
         group: root
         mode: '0600'
 
-    - name: Set proper permissions on SSL certificate
-      file:
-        path: /etc/ssl/certs/nginx-docker.crt
-        owner: root
-        group: root
-        mode: '0644'
+    - name: Check if Let's Encrypt certificate exists
+      stat:
+        path: "/etc/letsencrypt/live/{{ certbot_domain }}/fullchain.pem"
+      register: letsencrypt_cert
+
+    - name: Obtain Let's Encrypt wildcard certificate via Cloudflare DNS
+      command: >
+        certbot certonly
+        --dns-cloudflare
+        --dns-cloudflare-credentials {{ certbot_credentials_path }}
+        --dns-cloudflare-propagation-seconds 30
+        -d {{ certbot_domain }}
+        -d '*.{{ certbot_domain }}'
+        --email {{ certbot_email }}
+        --agree-tos
+        --non-interactive
+      when: not letsencrypt_cert.stat.exists
 
     - name: Check if DH parameters exist
       stat:
@@ -60,6 +74,16 @@
         owner: root
         group: root
         mode: '0644'
+      when: dhparam_exists.stat.exists or not dhparam_exists.stat.exists
+
+    - name: Set up certbot auto-renewal with NGINX reload
+      cron:
+        name: "certbot-renew"
+        minute: "30"
+        hour: "2"
+        weekday: "1"
+        job: "certbot renew --quiet --deploy-hook 'systemctl reload nginx'"
+        user: root
 
     - name: Remove default NGINX site config
       file:
