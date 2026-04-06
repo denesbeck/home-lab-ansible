@@ -54,6 +54,12 @@ Automatically approves the subnet route when advertised by a `tag:server` node, 
 | `tailscale_auth_key` | One-time auth key from the [Tailscale admin console](https://login.tailscale.com/admin/settings/keys) |
 | `tailscale_advertise_routes` | Subnet route to advertise (currently `192.168.64.15/32`) |
 
+## Cloudflare DNS
+
+Pi-hole only returns A (IPv4) records for `*.arcade-lab.io`. If a proxied wildcard (`*`) DNS record exists in Cloudflare, its proxy will inject AAAA (IPv6) responses. Clients that prefer IPv6 will connect to Cloudflare instead of the home lab server, bypassing Pi-hole entirely.
+
+To avoid this, ensure there are **no proxied wildcard DNS records** in Cloudflare for `arcade-lab.io`. Only keep records that are needed for publicly accessible services (e.g., the apex domain).
+
 ## Manual Steps
 
 After running the playbook for the first time:
@@ -62,3 +68,5 @@ After running the playbook for the first time:
 2. Tag your devices as `tag:trusted`
 3. Apply the ACL policy above in [Access Controls](https://login.tailscale.com/admin/acls)
 4. If not using `autoApprovers`: approve the subnet route under the server's route settings
+5. In the [Tailscale DNS settings](https://login.tailscale.com/admin/dns), add `100.104.44.113` as a global nameserver so remote clients use Pi-hole for DNS resolution
+6. Ensure no proxied wildcard DNS records exist in Cloudflare (see [Cloudflare DNS](#cloudflare-dns))
