@@ -50,7 +50,21 @@
           - "{{ filebrowser_config_path }}:/config"
       register: filebrowser_container
 
-    - name: Check if the Filebrowser container is running
-      debug:
-        msg: "Filebrowser container is running with name: {{ filebrowser_container_name }}"
-      when: filebrowser_container.changed
+    - name: Stop Filebrowser container to modify config
+      docker_container:
+        name: "{{ filebrowser_container_name }}"
+        state: stopped
+
+    - name: Enable thumbnails in Filebrowser
+      command: >
+        docker run --rm
+        -v {{ filebrowser_database_path }}:/database
+        filebrowser/filebrowser
+        config set -d /database/filebrowser.db --disableThumbnails=false
+      register: filebrowser_config_set
+      changed_when: "'Thumbnails Enabled:        true' in filebrowser_config_set.stdout"
+
+    - name: Start Filebrowser container
+      docker_container:
+        name: "{{ filebrowser_container_name }}"
+        state: started
