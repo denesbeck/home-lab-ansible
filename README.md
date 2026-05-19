@@ -18,7 +18,7 @@ Internet / Tailscale VPN
          ├──► Portainer      (:9000)   container management
          ├──► Grafana        (:3000)   dashboards
          ├──► Prometheus     (:9090)   metrics
-         ├──► Transmission   (:9091)   torrent client
+         ├──► qBittorrent    (:8081)   torrent client
          ├──► Filebrowser    (:8080)   web file manager
          ├──► Jellyfin       (:8096)   media server
          └──► NetAlertX      (host)    network scanner
@@ -32,7 +32,7 @@ Internet / Tailscale VPN
 | **Portainer** | Docker | `portainer.arcade-lab.io` | Docker container management UI |
 | **Grafana** | Docker | `grafana.arcade-lab.io` | Monitoring dashboards |
 | **Prometheus** | Docker | `prometheus.arcade-lab.io` | Metrics collection |
-| **Transmission** | Docker | `transmission.arcade-lab.io` | BitTorrent client |
+| **qBittorrent** | Docker | `qbittorrent.arcade-lab.io` | BitTorrent client |
 | **Filebrowser** | Docker | `filebrowser.arcade-lab.io` | Web-based file manager for movies, photos, and private storage |
 | **Jellyfin** | Docker | `jellyfin.arcade-lab.io` | Media server (4GB RAM, 4 CPU limit) |
 | **NetAlertX** | Docker | `netalertx.arcade-lab.io` | Network scanner and alerter (host network mode) |
@@ -68,7 +68,7 @@ Internet / Tailscale VPN
 │   ├── samba.yml            # Samba file sharing
 │   ├── ssh.yml              # SSH hardening
 │   ├── tailscale.yml        # Tailscale VPN
-│   ├── transmission.yml     # Transmission container
+│   ├── qbittorrent.yml      # qBittorrent container
 │   ├── ufw.yml              # UFW firewall rules
 │   ├── update.yml           # System updates
 │   ├── ups-monitor.yml      # UPS power outage monitor
@@ -90,7 +90,7 @@ Internet / Tailscale VPN
     ├── portainer.yml
     ├── ssh.yml
     ├── tailscale.yml
-    ├── transmission.yml
+    ├── qbittorrent.yml
     └── ups-monitor.yml
 ```
 
@@ -110,7 +110,7 @@ Run the master playbook to provision everything in the correct order:
 ansible-playbook playbooks/main.yml
 ```
 
-The master playbook executes in this order: system updates, volume mounts, Samba, Docker, NGINX, SSH hardening, UFW firewall, Transmission, Filebrowser, backup, monitoring, and Portainer.
+The master playbook executes in this order: system updates, volume mounts, Samba, Docker, NGINX, SSH hardening, UFW firewall, qBittorrent, Filebrowser, backup, monitoring, and Portainer.
 
 ### Individual services
 
@@ -149,7 +149,7 @@ All variable files live in `vars/` and are gitignored to protect secrets. You ne
 | `vars/pihole.yml` | DNS config, local DNS records, ports |
 | `vars/jellyfin.yml` | Timezone, paths, resource limits |
 | `vars/netalertx.yml` | Container name, image, port, timezone, data path |
-| `vars/transmission.yml` | Container config, download paths |
+| `vars/qbittorrent.yml` | Container config, download paths |
 | `vars/filebrowser.yml` | Container name, paths |
 | `vars/portainer.yml` | Container name, data path |
 | `vars/ups-monitor.yml` | Router IP for ping monitoring |
@@ -171,7 +171,7 @@ Four ext4 partitions are mounted via fstab (by UUID):
 |---|---|
 | `/mnt/private` | Private files (Samba + Filebrowser) |
 | `/mnt/photos` | Photo storage (Samba + Filebrowser + backup source) |
-| `/mnt/movies` | Media library (Samba + Filebrowser + Jellyfin + Transmission) |
+| `/mnt/movies` | Media library (Samba + Filebrowser + Jellyfin + qBittorrent) |
 | `/mnt/backups` | Backup destination (rsync with 3-backup rotation) |
 
 ## Backup

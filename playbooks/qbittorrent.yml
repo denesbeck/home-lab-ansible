@@ -1,0 +1,58 @@
+---
+- name: Set up qBittorrent container
+  hosts: all
+  become: true
+  vars_files:
+    - ../vars/qbittorrent.yml
+
+  tasks:
+    - name: Create necessary directories for qBittorrent container
+      file:
+        path: "{{ item }}"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        state: directory
+        mode: "0755"
+        recurse: yes
+      loop:
+        - "{{ qbittorrent_config_path }}"
+        - "{{ qbittorrent_downloads_path }}"
+
+    - name: Gather user ID (PUID)
+      command: "id -u {{ ansible_user }}"
+      register: user_id
+      changed_when: false
+
+    - name: Gather group ID (PGID)
+      command: "id -g {{ ansible_user }}"
+      register: group_id
+      changed_when: false
+
+    - name: Ensure qBittorrent container is running
+      docker_container:
+        name: "{{ qbittorrent_container_name }}"
+        image: "{{ qbittorrent_image }}"
+        state: started
+        restart_policy: unless-stopped
+        exposed_ports:
+          - "8080"
+          - "{{ qbittorrent_bt_port }}"
+          - "{{ qbittorrent_bt_port }}/udp"
+        published_ports:
+          - "127.0.0.1:{{ qbittorrent_webui_port }}:8080"
+          - "127.0.0.1:{{ qbittorrent_bt_port }}:{{ qbittorrent_bt_port }}"
+          - "127.0.0.1:{{ qbittorrent_bt_port }}/udp:{{ qbittorrent_bt_port }}/udp"
+        env:
+          PUID: "{{ user_id.stdout }}"
+          PGID: "{{ group_id.stdout }}"
+          TZ: "{{ qbittorrent_timezone }}"
+          WEBUI_PORT: "8080"
+        volumes:
+          - "{{ qbittorrent_config_path }}:/config"
+          - "{{ qbittorrent_downloads_path }}:/downloads"
+      register: qbittorrent_container
+
+    - name: Check if the qBittorrent container is running
+      debug:
+        msg: "qBittorrent container is running with name: {{ qbittorrent_container_name }}"
+      when: qbittorrent_container.changed
