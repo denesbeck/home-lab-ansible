@@ -18,6 +18,34 @@
         - "{{ qbittorrent_config_path }}"
         - "{{ qbittorrent_downloads_path }}"
 
+    - name: Ensure qBittorrent config subdirectory exists
+      file:
+        path: "{{ qbittorrent_config_path }}/qBittorrent"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        state: directory
+        mode: "0755"
+
+    - name: Stop qBittorrent container before patching config
+      docker_container:
+        name: "{{ qbittorrent_container_name }}"
+        state: stopped
+      ignore_errors: true
+
+    - name: Configure qBittorrent disk IO modes to disable OS cache
+      ini_file:
+        path: "{{ qbittorrent_config_path }}/qBittorrent/qBittorrent.conf"
+        section: BitTorrent
+        option: "{{ item.option }}"
+        value: "{{ item.value }}"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0644"
+        create: yes
+      loop:
+        - { option: 'Session\DiskIOReadMode', value: 'DisableOSCache' }
+        - { option: 'Session\DiskIOWriteMode', value: 'DisableOSCache' }
+
     - name: Gather user ID (PUID)
       command: "id -u {{ ansible_user }}"
       register: user_id
