@@ -1,0 +1,53 @@
+---
+- name: Pull latest container images
+  hosts: all
+  become: true
+
+  vars_files:
+    - ../vars/containers.yml
+
+  tasks:
+    - name: Pull latest version of each container image
+      docker_image:
+        name: "{{ item }}"
+        source: pull
+        force_source: true
+      loop:
+        - "{{ jellyfin_image }}"
+        - "{{ qbittorrent_image }}"
+        - "{{ portainer_image }}"
+        - "{{ pihole_image }}"
+        - "{{ netalertx_image }}"
+        - "{{ filebrowser_image }}"
+
+    - name: Pull latest images for monitoring stack
+      command: docker compose pull
+      args:
+        chdir: /home/monitoring
+      register: monitoring_pull
+      changed_when: "'Pulled' in monitoring_pull.stderr or 'Pulled' in monitoring_pull.stdout"
+
+    - name: Recreate monitoring stack containers with new images
+      command: docker compose up -d
+      args:
+        chdir: /home/monitoring
+      when: monitoring_pull.changed
+
+# Re-run per-service playbooks. docker_container compares image IDs strictly,
+# so containers are recreated only when the freshly pulled image differs.
+- import_playbook: ./jellyfin.yml
+- import_playbook: ./qbittorrent.yml
+- import_playbook: ./portainer.yml
+- import_playbook: ./pihole.yml
+- import_playbook: ./netalertx.yml
+- import_playbook: ./filebrowser.yml
+
+- name: Clean up old images
+  hosts: all
+  become: true
+  tasks:
+    - name: Prune dangling images
+      docker_prune:
+        images: true
+        images_filters:
+          dangling: true

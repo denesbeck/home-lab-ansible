@@ -4,6 +4,7 @@
   become: true
   vars_files:
     - ../vars/pihole.yml
+    - ../vars/containers.yml
 
   tasks:
     - name: Create Pi-hole configuration directory

@@ -5,6 +5,7 @@
 
   vars_files:
     - ../vars/jellyfin.yml
+    - ../vars/containers.yml
 
   tasks:
     - name: Check if Docker is installed
@@ -27,8 +28,8 @@
 
     - name: Ensure Jellyfin container is running
       docker_container:
-        name: jellyfin
-        image: jellyfin/jellyfin
+        name: "{{ jellyfin_container_name }}"
+        image: "{{ jellyfin_image }}"
         state: started
         restart_policy: unless-stopped
         memory: "{{ jellyfin_memory_limit }}"

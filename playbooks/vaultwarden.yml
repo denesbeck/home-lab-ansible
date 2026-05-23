@@ -1,0 +1,39 @@
+---
+- name: Set up Vaultwarden container
+  hosts: all
+  become: true
+  vars_files:
+    - ../vars/vaultwarden.yml
+    - ../vars/containers.yml
+
+  tasks:
+    - name: Create Vaultwarden data directory
+      file:
+        path: "{{ vaultwarden_data_path }}"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        state: directory
+        mode: "0755"
+        recurse: yes
+
+    - name: Ensure Vaultwarden container is running
+      docker_container:
+        name: "{{ vaultwarden_container_name }}"
+        image: "{{ vaultwarden_image }}"
+        state: started
+        restart_policy: always
+        published_ports:
+          - "127.0.0.1:{{ vaultwarden_port }}:80"
+        env:
+          DOMAIN: "https://vaultwarden.arcade-lab.io"
+          SIGNUPS_ALLOWED: "false"
+          INVITATIONS_ALLOWED: "false"
+          SHOW_PASSWORD_HINT: "false"
+        volumes:
+          - "{{ vaultwarden_data_path }}:/data"
+      register: vaultwarden_container
+
+    - name: Check if the Vaultwarden container is running
+      debug:
+        msg: "Vaultwarden container is running with name: {{ vaultwarden_container_name }}"
+      when: vaultwarden_container.changed

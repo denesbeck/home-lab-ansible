@@ -4,6 +4,7 @@
   become: true
   vars_files:
     - ../vars/netalertx.yml
+    - ../vars/containers.yml
 
   tasks:
     - name: Create necessary directories for NetAlertX container

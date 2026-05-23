@@ -4,6 +4,7 @@
   become: true
   vars_files:
     - ../vars/portainer.yml
+    - ../vars/containers.yml
 
   tasks:
     - name: Create Portainer data directory
@@ -18,7 +19,7 @@
     - name: Ensure Portainer container is running
       docker_container:
         name: "{{ portainer_container_name }}"
-        image: "portainer/portainer-ce:sts"
+        image: "{{ portainer_image }}"
         state: started
         restart_policy: always
         published_ports:

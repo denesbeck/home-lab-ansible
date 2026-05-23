@@ -4,6 +4,7 @@
   become: true
   vars_files:
     - ../vars/filebrowser.yml
+    - ../vars/containers.yml
 
   tasks:
     - name: Create necessary directories for Filebrowser container
@@ -34,7 +35,7 @@
     - name: Ensure Filebrowser container is running
       docker_container:
         name: "{{ filebrowser_container_name }}"
-        image: "filebrowser/filebrowser"
+        image: "{{ filebrowser_image }}"
         state: started
         restart_policy: unless-stopped
         published_ports:
@@ -59,7 +60,7 @@
       command: >
         docker run --rm
         -v {{ filebrowser_database_path }}:/database
-        filebrowser/filebrowser
+        {{ filebrowser_image }}
         config set -d /database/filebrowser.db --disableThumbnails=false
       register: filebrowser_config_set
       changed_when: "'Thumbnails Enabled:        true' in filebrowser_config_set.stdout"

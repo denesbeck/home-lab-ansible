@@ -21,7 +21,8 @@ Internet / Tailscale VPN
          ├──► qBittorrent    (:8081)   torrent client
          ├──► Filebrowser    (:8080)   web file manager
          ├──► Jellyfin       (:8096)   media server
-         └──► NetAlertX      (host)    network scanner
+         ├──► NetAlertX      (host)    network scanner
+         └──► Vaultwarden    (:8888)   password manager
 ```
 
 ## Services
@@ -36,6 +37,7 @@ Internet / Tailscale VPN
 | **Filebrowser** | Docker | `filebrowser.arcade-lab.io` | Web-based file manager for movies, photos, and private storage |
 | **Jellyfin** | Docker | `jellyfin.arcade-lab.io` | Media server (4GB RAM, 4 CPU limit) |
 | **NetAlertX** | Docker | `netalertx.arcade-lab.io` | Network scanner and alerter (host network mode) |
+| **Vaultwarden** | Docker | `vaultwarden.arcade-lab.io` | Self-hosted Bitwarden-compatible password manager |
 | **NGINX** | Native | — | Reverse proxy with SSL for all services |
 | **Samba** | Native | — | SMB3 file sharing (3 shares: private, photos, movies) |
 | **Tailscale** | Native | — | VPN with subnet routing for remote access |
@@ -69,8 +71,10 @@ Internet / Tailscale VPN
 │   ├── ssh.yml              # SSH hardening
 │   ├── tailscale.yml        # Tailscale VPN
 │   ├── qbittorrent.yml      # qBittorrent container
+│   ├── vaultwarden.yml      # Vaultwarden password manager container
 │   ├── ufw.yml              # UFW firewall rules
 │   ├── update.yml           # System updates
+│   ├── update-images.yml    # Pull latest container images and recreate
 │   ├── ups-monitor.yml      # UPS power outage monitor
 │   └── volumes.yml          # Disk mounts via fstab
 ├── scripts/
@@ -84,6 +88,7 @@ Internet / Tailscale VPN
     ├── certbot.yml
     ├── filebrowser.yml
     ├── fstab.yml
+    ├── containers.yml       # Container names and image tags (shared by all service playbooks)
     ├── jellyfin.yml
     ├── netalertx.yml
     ├── pihole.yml
@@ -91,6 +96,7 @@ Internet / Tailscale VPN
     ├── ssh.yml
     ├── tailscale.yml
     ├── qbittorrent.yml
+    ├── vaultwarden.yml
     └── ups-monitor.yml
 ```
 
@@ -121,10 +127,11 @@ ansible-playbook playbooks/pihole.yml
 ansible-playbook playbooks/jellyfin.yml
 ansible-playbook playbooks/netalertx.yml
 ansible-playbook playbooks/tailscale.yml
+ansible-playbook playbooks/vaultwarden.yml
 ansible-playbook playbooks/ups-monitor.yml
 ```
 
-> **Note:** Pi-hole, Jellyfin, NetAlertX, Tailscale, and UPS Monitor are not included in `main.yml` and must be run separately.
+> **Note:** Pi-hole, Jellyfin, NetAlertX, Tailscale, Vaultwarden, and UPS Monitor are not included in `main.yml` and must be run separately.
 
 ### Utility tasks
 
@@ -146,12 +153,14 @@ All variable files live in `vars/` and are gitignored to protect secrets. You ne
 | `vars/fstab.yml` | Disk UUIDs and mount points |
 | `vars/ssh.yml` | SSH port, auth settings, timeouts |
 | `vars/tailscale.yml` | Auth key, advertised routes |
+| `vars/containers.yml` | Container names and image tags for all Docker services |
 | `vars/pihole.yml` | DNS config, local DNS records, ports |
 | `vars/jellyfin.yml` | Timezone, paths, resource limits |
-| `vars/netalertx.yml` | Container name, image, port, timezone, data path |
-| `vars/qbittorrent.yml` | Container config, download paths |
-| `vars/filebrowser.yml` | Container name, paths |
-| `vars/portainer.yml` | Container name, data path |
+| `vars/netalertx.yml` | Port, timezone, data path |
+| `vars/qbittorrent.yml` | Ports, paths, timezone |
+| `vars/filebrowser.yml` | Paths |
+| `vars/portainer.yml` | Data path |
+| `vars/vaultwarden.yml` | Data path, port |
 | `vars/ups-monitor.yml` | Router IP for ping monitoring |
 
 ## Security
