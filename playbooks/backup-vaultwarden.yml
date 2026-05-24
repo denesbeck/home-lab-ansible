@@ -1,5 +1,5 @@
 ---
-- name: Setup daily Vaultwarden backup to S3
+- name: Setup hourly Vaultwarden backup to S3
   hosts: all
   become: true
   vars_files:
@@ -123,17 +123,6 @@
           log_message "Uploading to s3://$S3_BUCKET/$BACKUP_FILE"
           aws s3 cp "$TMP_DIR/$BACKUP_FILE" "s3://$S3_BUCKET/$BACKUP_FILE"
 
-          log_message "Pruning old backups (keeping latest)"
-          aws s3api list-objects-v2 \
-              --bucket "$S3_BUCKET" \
-              --query 'sort_by(Contents, &LastModified)[:-1].Key' \
-              --output text | tr '\t' '\n' | while read -r key; do
-              if [ -n "$key" ] && [ "$key" != "None" ]; then
-                  log_message "Deleting old backup: $key"
-                  aws s3 rm "s3://$S3_BUCKET/$key"
-              fi
-          done
-
           log_message "Backup completed successfully"
 
     - name: Create log file with proper permissions
@@ -144,10 +133,9 @@
         group: root
         mode: "0644"
 
-    - name: Setup daily backup cronjob at 2 AM
+    - name: Setup hourly backup cronjob
       cron:
-        name: "Daily Vaultwarden backup to S3"
+        name: "Hourly Vaultwarden backup to S3"
         minute: "0"
-        hour: "2"
         job: "{{ backup_script_path }} >> {{ backup_log_path }} 2>&1"
         state: present

@@ -272,7 +272,7 @@ Four ext4 partitions are mounted via fstab (by UUID):
 
 **Photo backup:** A daily cron job (1:00 AM) runs `rsync` to back up `/mnt/photos` to `/mnt/backups` with timestamp-based rotation, keeping the last 3 backups. The server is also configured to restart daily at 3:00 AM.
 
-**Vaultwarden backup:** A daily cron job (2:00 AM) creates a consistent SQLite backup using `sqlite3 .backup` on the host, archives the full data directory, uploads it to S3, and prunes all but the latest backup. AWS infrastructure (S3 bucket, IAM user, policy) is managed via Terraform in `terraform/`.
+**Vaultwarden backup:** An hourly cron job creates a consistent SQLite backup using `sqlite3 .backup` on the host, archives the full data directory, and uploads it to S3. Old backups are automatically expired by a 3-day S3 lifecycle rule (~72 restore points). AWS infrastructure (S3 bucket, IAM user, policy) is managed via Terraform in `terraform/`.
 
 ## Monitoring
 

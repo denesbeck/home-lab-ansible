@@ -46,7 +46,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "vaultwarden_backup" {
     filter {}
 
     expiration {
-      days = 7
+      days = 3
     }
   }
 }

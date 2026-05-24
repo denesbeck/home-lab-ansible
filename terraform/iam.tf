@@ -11,13 +11,13 @@ resource "aws_iam_user_policy" "vaultwarden_backup" {
     Statement = [
       {
         Effect   = "Allow"
-        Action   = ["s3:PutObject", "s3:DeleteObject"]
+        Action   = ["s3:PutObject"]
         Resource = "${aws_s3_bucket.vaultwarden_backup.arn}/*"
       },
       {
         Effect   = "Allow"
-        Action   = ["s3:ListBucket"]
-        Resource = aws_s3_bucket.vaultwarden_backup.arn
+        Action   = ["cloudwatch:PutMetricData"]
+        Resource = "*"
       }
     ]
   })
