@@ -25,6 +25,82 @@ Internet / Tailscale VPN
          └──► Vaultwarden    (:8888)   password manager
 ```
 
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#414559', 'primaryTextColor': '#c6d0f5', 'primaryBorderColor': '#51576d', 'lineColor': '#8caaee', 'secondaryColor': '#414559', 'tertiaryColor': '#414559', 'mainBkg': '#303446', 'nodeBorder': '#51576d', 'clusterBkg': '#292c3c', 'clusterBorder': '#51576d', 'titleColor': '#c6d0f5', 'edgeLabelBackground': '#303446'}}}%%
+graph TD
+    subgraph Clients
+        A1[Browser]
+        A2[Mobile App]
+    end
+
+    subgraph Network
+        B[Tailscale VPN / LAN]
+    end
+
+    subgraph Home Lab Server
+        C[Pi-hole :800<br/>DNS + ad blocking]
+        D[NGINX :80/443<br/>SSL termination<br/>Let's Encrypt via Cloudflare]
+
+        subgraph Docker Containers
+            E1[Portainer :9000]
+            E2[Grafana :3000]
+            E3[Prometheus :9090]
+            E4[qBittorrent :8081]
+            E5[Filebrowser :8080]
+            E6[Jellyfin :8096]
+            E7[NetAlertX<br/>host network]
+            E8[Vaultwarden :8888]
+        end
+
+        subgraph Native Services
+            F1[Samba<br/>SMB3 file sharing]
+            F2[UPS Monitor<br/>power outage detection]
+        end
+
+        subgraph Storage
+            G1["/mnt/private"]
+            G2["/mnt/photos"]
+            G3["/mnt/movies"]
+            G4["/mnt/backups"]
+        end
+    end
+
+    subgraph AWS
+        H[(S3<br/>Vaultwarden backups)]
+    end
+
+    A1 & A2 --> B
+    B --> C
+    C --> D
+    D -->|127.0.0.1| E1 & E2 & E3 & E4 & E5 & E6 & E7 & E8
+    E5 --> G1 & G2 & G3
+    E6 --> G3
+    E4 --> G3
+    F1 --> G1 & G2 & G3
+    E8 -->|daily backup| H
+
+    style A1 fill:#8caaee,stroke:#85c1dc,color:#303446
+    style A2 fill:#8caaee,stroke:#85c1dc,color:#303446
+    style B fill:#ca9ee6,stroke:#babbf1,color:#303446
+    style C fill:#ef9f76,stroke:#ea999c,color:#303446
+    style D fill:#ef9f76,stroke:#ea999c,color:#303446
+    style E1 fill:#a6d189,stroke:#81c8be,color:#303446
+    style E2 fill:#a6d189,stroke:#81c8be,color:#303446
+    style E3 fill:#a6d189,stroke:#81c8be,color:#303446
+    style E4 fill:#a6d189,stroke:#81c8be,color:#303446
+    style E5 fill:#a6d189,stroke:#81c8be,color:#303446
+    style E6 fill:#a6d189,stroke:#81c8be,color:#303446
+    style E7 fill:#a6d189,stroke:#81c8be,color:#303446
+    style E8 fill:#a6d189,stroke:#81c8be,color:#303446
+    style F1 fill:#e5c890,stroke:#ef9f76,color:#303446
+    style F2 fill:#e5c890,stroke:#ef9f76,color:#303446
+    style G1 fill:#eebebe,stroke:#ea999c,color:#303446
+    style G2 fill:#eebebe,stroke:#ea999c,color:#303446
+    style G3 fill:#eebebe,stroke:#ea999c,color:#303446
+    style G4 fill:#eebebe,stroke:#ea999c,color:#303446
+    style H fill:#c6d0f5,stroke:#babbf1,color:#303446
+```
+
 ## Services
 
 | Service | Type | Subdomain | Description |
