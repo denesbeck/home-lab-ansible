@@ -59,6 +59,7 @@ Internet / Tailscale VPN
 ├── playbooks/               # Service playbooks
 │   ├── main.yml             # Master orchestrator
 │   ├── backup.yml           # Photo backup with rotation + daily restart cron
+│   ├── backup-vaultwarden.yml # Vaultwarden S3 backup setup (AWS CLI, script, cron)
 │   ├── docker.yml           # Docker CE installation
 │   ├── filebrowser.yml      # Filebrowser container
 │   ├── jellyfin.yml         # Jellyfin media server container
@@ -79,6 +80,13 @@ Internet / Tailscale VPN
 │   └── volumes.yml          # Disk mounts via fstab
 ├── scripts/
 │   └── wait_for_network.sh  # Network readiness check for Docker
+├── terraform/               # AWS infrastructure (S3, IAM)
+│   ├── versions.tf          # Terraform + provider versions, S3 backend
+│   ├── provider.tf          # AWS provider (SSO profile)
+│   ├── variables.tf         # Input variables
+│   ├── outputs.tf           # Bucket names, access keys
+│   ├── s3.tf                # Terraform state bucket + Vaultwarden backup bucket
+│   └── iam.tf               # IAM user, policy, access key for backups
 ├── tasks/                   # Reusable task files
 │   ├── generate-password.yml
 │   ├── reset-docker.yml
@@ -129,9 +137,10 @@ ansible-playbook playbooks/netalertx.yml
 ansible-playbook playbooks/tailscale.yml
 ansible-playbook playbooks/vaultwarden.yml
 ansible-playbook playbooks/ups-monitor.yml
+ansible-playbook playbooks/backup-vaultwarden.yml
 ```
 
-> **Note:** Pi-hole, Jellyfin, NetAlertX, Tailscale, Vaultwarden, and UPS Monitor are not included in `main.yml` and must be run separately.
+> **Note:** Pi-hole, Jellyfin, NetAlertX, Tailscale, Vaultwarden, UPS Monitor, and Vaultwarden backup are not included in `main.yml` and must be run separately.
 
 ### Utility tasks
 
@@ -160,7 +169,7 @@ All variable files live in `vars/` and are gitignored to protect secrets. You ne
 | `vars/qbittorrent.yml` | Ports, paths, timezone |
 | `vars/filebrowser.yml` | Paths |
 | `vars/portainer.yml` | Data path |
-| `vars/vaultwarden.yml` | Data path, port |
+| `vars/vaultwarden.yml` | Data path, port, AWS credentials, S3 bucket/region |
 | `vars/ups-monitor.yml` | Router IP for ping monitoring |
 
 ## Security
@@ -185,7 +194,9 @@ Four ext4 partitions are mounted via fstab (by UUID):
 
 ## Backup
 
-A daily cron job (1:00 AM) runs `rsync` to back up `/mnt/photos` to `/mnt/backups` with timestamp-based rotation, keeping the last 3 backups. The server is also configured to restart daily at 3:00 AM.
+**Photo backup:** A daily cron job (1:00 AM) runs `rsync` to back up `/mnt/photos` to `/mnt/backups` with timestamp-based rotation, keeping the last 3 backups. The server is also configured to restart daily at 3:00 AM.
+
+**Vaultwarden backup:** A daily cron job (2:00 AM) creates a consistent SQLite backup using `sqlite3 .backup` on the host, archives the full data directory, uploads it to S3, and prunes all but the latest backup. AWS infrastructure (S3 bucket, IAM user, policy) is managed via Terraform in `terraform/`.
 
 ## Monitoring
 

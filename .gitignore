@@ -9,3 +9,9 @@ vars
 
 # ansible.log and ansible.cfg
 ansible.*
+
+# terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/*.tfplan

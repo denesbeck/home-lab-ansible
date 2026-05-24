@@ -1,0 +1,153 @@
+---
+- name: Setup daily Vaultwarden backup to S3
+  hosts: all
+  become: true
+  vars_files:
+    - ../vars/vaultwarden.yml
+    - ../vars/containers.yml
+
+  vars:
+    backup_script_path: /usr/local/bin/backup-vaultwarden.sh
+    backup_log_path: /var/log/backup-vaultwarden.log
+    backup_tmp_path: /tmp/vaultwarden-backup
+
+  tasks:
+    - name: Check if AWS CLI v2 is installed
+      command: aws --version
+      register: aws_cli_check
+      changed_when: false
+      failed_when: false
+
+    - name: Install AWS CLI v2
+      when: aws_cli_check.rc != 0 or 'aws-cli/2' not in (aws_cli_check.stdout + aws_cli_check.stderr)
+      block:
+        - name: Install unzip and sqlite3
+          apt:
+            name:
+              - unzip
+              - sqlite3
+            state: present
+            update_cache: yes
+
+        - name: Download AWS CLI v2
+          get_url:
+            url: "https://awscli.amazonaws.com/awscli-exe-linux-{{ ansible_architecture }}.zip"
+            dest: /tmp/awscliv2.zip
+
+        - name: Unzip AWS CLI v2
+          unarchive:
+            src: /tmp/awscliv2.zip
+            dest: /tmp
+            remote_src: yes
+
+        - name: Install AWS CLI v2
+          command: /tmp/aws/install --update
+
+        - name: Cleanup installer
+          file:
+            path: "{{ item }}"
+            state: absent
+          loop:
+            - /tmp/awscliv2.zip
+            - /tmp/aws
+
+    - name: Create AWS credentials directory
+      file:
+        path: /root/.aws
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Deploy AWS credentials
+      copy:
+        dest: /root/.aws/credentials
+        owner: root
+        group: root
+        mode: "0600"
+        content: |
+          [default]
+          aws_access_key_id = {{ vaultwarden_backup_aws_access_key_id }}
+          aws_secret_access_key = {{ vaultwarden_backup_aws_secret_access_key }}
+
+    - name: Deploy AWS config
+      copy:
+        dest: /root/.aws/config
+        owner: root
+        group: root
+        mode: "0600"
+        content: |
+          [default]
+          region = {{ vaultwarden_backup_s3_region }}
+
+    - name: Create backup script
+      copy:
+        dest: "{{ backup_script_path }}"
+        mode: "0755"
+        owner: root
+        group: root
+        content: |
+          #!/bin/bash
+          set -euo pipefail
+
+          DATA_PATH="{{ vaultwarden_data_path }}"
+          S3_BUCKET="{{ vaultwarden_backup_s3_bucket }}"
+          TMP_DIR="{{ backup_tmp_path }}"
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          BACKUP_FILE="vaultwarden_${TIMESTAMP}.tar.gz"
+          LOG_FILE="{{ backup_log_path }}"
+
+          log_message() {
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+          }
+
+          cleanup() {
+              rm -rf "$TMP_DIR"
+          }
+          trap cleanup EXIT
+
+          mkdir -p "$TMP_DIR"
+
+          log_message "Starting Vaultwarden backup"
+
+          log_message "Creating SQLite backup"
+          sqlite3 "$DATA_PATH/db.sqlite3" ".backup '$TMP_DIR/db-backup.sqlite3'"
+
+          log_message "Copying data directory"
+          cp -r "$DATA_PATH" "$TMP_DIR/data"
+          mv "$TMP_DIR/db-backup.sqlite3" "$TMP_DIR/data/db.sqlite3"
+
+          log_message "Compressing backup"
+          tar -czf "$TMP_DIR/$BACKUP_FILE" -C "$TMP_DIR" data
+
+          log_message "Uploading to s3://$S3_BUCKET/$BACKUP_FILE"
+          aws s3 cp "$TMP_DIR/$BACKUP_FILE" "s3://$S3_BUCKET/$BACKUP_FILE"
+
+          log_message "Pruning old backups (keeping latest)"
+          aws s3api list-objects-v2 \
+              --bucket "$S3_BUCKET" \
+              --query 'sort_by(Contents, &LastModified)[:-1].Key' \
+              --output text | tr '\t' '\n' | while read -r key; do
+              if [ -n "$key" ] && [ "$key" != "None" ]; then
+                  log_message "Deleting old backup: $key"
+                  aws s3 rm "s3://$S3_BUCKET/$key"
+              fi
+          done
+
+          log_message "Backup completed successfully"
+
+    - name: Create log file with proper permissions
+      file:
+        path: "{{ backup_log_path }}"
+        state: touch
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Setup daily backup cronjob at 2 AM
+      cron:
+        name: "Daily Vaultwarden backup to S3"
+        minute: "0"
+        hour: "2"
+        job: "{{ backup_script_path }} >> {{ backup_log_path }} 2>&1"
+        state: present
