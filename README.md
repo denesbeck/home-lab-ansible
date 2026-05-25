@@ -77,7 +77,7 @@ graph TD
     E6 --> G3
     E4 --> G3
     F1 --> G1 & G2 & G3
-    E8 -->|daily backup| H
+    E8 -->|hourly backup| H
 
     style A1 fill:#8caaee,stroke:#85c1dc,color:#303446
     style A2 fill:#8caaee,stroke:#85c1dc,color:#303446
@@ -136,6 +136,7 @@ graph TD
 │   ├── main.yml             # Master orchestrator
 │   ├── backup.yml           # Photo backup with rotation + daily restart cron
 │   ├── backup-vaultwarden.yml # Vaultwarden S3 backup setup (AWS CLI, script, cron)
+│   ├── cloudwatch-agent.yml  # CloudWatch heartbeat agent for DR failover detection
 │   ├── docker.yml           # Docker CE installation
 │   ├── filebrowser.yml      # Filebrowser container
 │   ├── jellyfin.yml         # Jellyfin media server container
@@ -162,7 +163,16 @@ graph TD
 │   ├── variables.tf         # Input variables
 │   ├── outputs.tf           # Bucket names, access keys
 │   ├── s3.tf                # Terraform state bucket + Vaultwarden backup bucket
-│   └── iam.tf               # IAM user, policy, access key for backups
+│   ├── iam.tf               # IAM user, policy, access key for backups
+│   └── vaultwarden-dr/      # DR failover infrastructure
+│       ├── cloudwatch.tf    # Failure + recovery alarms
+│       ├── ec2.tf           # Launch template (spot) + security group
+│       ├── iam.tf           # Lambda role, EC2 instance profile
+│       ├── lambda.tf        # Function + SNS trigger
+│       ├── lambda/failover.py # Lambda handler (failover + teardown)
+│       ├── sns.tf           # Alarm + notification topics
+│       ├── ssm.tf           # Tailscale API key, Discord webhook, Cloudflare token
+│       └── variables.tf     # Input variables
 ├── tasks/                   # Reusable task files
 │   ├── generate-password.yml
 │   ├── reset-docker.yml
@@ -180,6 +190,7 @@ graph TD
     ├── ssh.yml
     ├── tailscale.yml
     ├── qbittorrent.yml
+    ├── cloudwatch.yml
     ├── vaultwarden.yml
     └── ups-monitor.yml
 ```
@@ -214,9 +225,10 @@ ansible-playbook playbooks/tailscale.yml
 ansible-playbook playbooks/vaultwarden.yml
 ansible-playbook playbooks/ups-monitor.yml
 ansible-playbook playbooks/backup-vaultwarden.yml
+ansible-playbook playbooks/cloudwatch-agent.yml
 ```
 
-> **Note:** Pi-hole, Jellyfin, NetAlertX, Tailscale, Vaultwarden, UPS Monitor, and Vaultwarden backup are not included in `main.yml` and must be run separately.
+> **Note:** Pi-hole, Jellyfin, NetAlertX, Tailscale, Vaultwarden, UPS Monitor, Vaultwarden backup, and CloudWatch agent are not included in `main.yml` and must be run separately.
 
 ### Utility tasks
 
@@ -246,6 +258,7 @@ All variable files live in `vars/` and are gitignored to protect secrets. You ne
 | `vars/filebrowser.yml` | Paths |
 | `vars/portainer.yml` | Data path |
 | `vars/vaultwarden.yml` | Data path, port, AWS credentials, S3 bucket/region |
+| `vars/cloudwatch.yml` | Namespace, metric name, heartbeat interval |
 | `vars/ups-monitor.yml` | Router IP for ping monitoring |
 
 ## Security
@@ -273,6 +286,8 @@ Four ext4 partitions are mounted via fstab (by UUID):
 **Photo backup:** A daily cron job (1:00 AM) runs `rsync` to back up `/mnt/photos` to `/mnt/backups` with timestamp-based rotation, keeping the last 3 backups. The server is also configured to restart daily at 3:00 AM.
 
 **Vaultwarden backup:** An hourly cron job creates a consistent SQLite backup using `sqlite3 .backup` on the host, archives the full data directory, and uploads it to S3. Old backups are automatically expired by a 3-day S3 lifecycle rule (~72 restore points). AWS infrastructure (S3 bucket, IAM user, policy) is managed via Terraform in `terraform/`.
+
+**Vaultwarden DR failover:** A CloudWatch heartbeat agent sends a custom metric every 60 seconds. If heartbeats stop for ~5 minutes, a CloudWatch alarm triggers a Lambda function that launches an EC2 spot instance, restores the latest S3 backup, connects to Tailscale, obtains a Let's Encrypt certificate via Cloudflare DNS-01 challenge, updates the DNS record to the Tailscale IP, and serves Vaultwarden behind nginx with TLS at `https://vaultwarden-dr.arcade-lab.io`. When heartbeats resume for 10 consecutive minutes, the failover instance is automatically terminated. Infrastructure is managed via Terraform in `terraform/vaultwarden-dr/`.
 
 ## Monitoring
 

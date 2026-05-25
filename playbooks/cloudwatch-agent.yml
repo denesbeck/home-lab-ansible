@@ -1,0 +1,71 @@
+---
+- name: Setup CloudWatch heartbeat agent
+  hosts: all
+  become: true
+  vars_files:
+    - ../vars/vaultwarden.yml
+    - ../vars/cloudwatch.yml
+
+  vars:
+    heartbeat_script_path: /usr/local/bin/cloudwatch-heartbeat.sh
+    heartbeat_log_path: /var/log/cloudwatch-heartbeat.log
+
+  tasks:
+    - name: Create heartbeat script
+      copy:
+        dest: "{{ heartbeat_script_path }}"
+        mode: "0755"
+        owner: root
+        group: root
+        content: |
+          #!/bin/bash
+          set -euo pipefail
+
+          NAMESPACE="{{ cloudwatch_namespace }}"
+          METRIC="{{ cloudwatch_metric_name }}"
+          REGION="{{ vaultwarden_backup_s3_region }}"
+
+          while true; do
+              aws cloudwatch put-metric-data \
+                  --namespace "$NAMESPACE" \
+                  --metric-name "$METRIC" \
+                  --value 1 \
+                  --region "$REGION" 2>> "{{ heartbeat_log_path }}" || true
+              sleep {{ cloudwatch_interval }}
+          done
+
+    - name: Create systemd service for heartbeat
+      copy:
+        dest: /etc/systemd/system/cloudwatch-heartbeat.service
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=CloudWatch Vaultwarden Heartbeat
+          After=network-online.target
+          Wants=network-online.target
+
+          [Service]
+          Type=simple
+          ExecStart={{ heartbeat_script_path }}
+          Restart=always
+          RestartSec=10
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Create log file with proper permissions
+      file:
+        path: "{{ heartbeat_log_path }}"
+        state: touch
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Enable and start heartbeat service
+      systemd:
+        name: cloudwatch-heartbeat
+        enabled: true
+        state: restarted
+        daemon_reload: true
