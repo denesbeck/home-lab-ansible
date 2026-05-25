@@ -1,10 +1,10 @@
-data "aws_ami" "ubuntu" {
+data "aws_ami" "al2023" {
   most_recent = true
-  owners      = ["099720109477"] # Canonical
+  owners      = ["amazon"]
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
+    values = ["al2023-ami-2023.*-x86_64"]
   }
 
   filter {
@@ -26,9 +26,10 @@ resource "aws_security_group" "failover" {
 }
 
 resource "aws_launch_template" "failover" {
-  name          = "vaultwarden-dr-failover"
-  image_id      = data.aws_ami.ubuntu.id
-  instance_type = var.ec2_instance_type
+  name                   = "vaultwarden-dr-failover"
+  image_id               = data.aws_ami.al2023.id
+  instance_type          = var.ec2_instance_type
+  update_default_version = true
 
   instance_market_options {
     market_type = "spot"

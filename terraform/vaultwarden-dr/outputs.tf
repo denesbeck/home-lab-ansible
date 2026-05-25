@@ -2,10 +2,6 @@ output "cloudwatch_alarm_arn" {
   value = aws_cloudwatch_metric_alarm.vaultwarden_heartbeat.arn
 }
 
-output "cloudwatch_recovery_alarm_arn" {
-  value = aws_cloudwatch_metric_alarm.vaultwarden_heartbeat_recovery.arn
-}
-
 output "sns_alarm_topic_arn" {
   value = aws_sns_topic.vaultwarden_alarm.arn
 }

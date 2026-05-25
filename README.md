@@ -165,7 +165,7 @@ graph TD
 │   ├── s3.tf                # Terraform state bucket + Vaultwarden backup bucket
 │   ├── iam.tf               # IAM user, policy, access key for backups
 │   └── vaultwarden-dr/      # DR failover infrastructure
-│       ├── cloudwatch.tf    # Failure + recovery alarms
+│       ├── cloudwatch.tf    # Heartbeat alarm (failover + recovery)
 │       ├── ec2.tf           # Launch template (spot) + security group
 │       ├── iam.tf           # Lambda role, EC2 instance profile
 │       ├── lambda.tf        # Function + SNS trigger
@@ -287,7 +287,7 @@ Four ext4 partitions are mounted via fstab (by UUID):
 
 **Vaultwarden backup:** An hourly cron job creates a consistent SQLite backup using `sqlite3 .backup` on the host, archives the full data directory, and uploads it to S3. Old backups are automatically expired by a 3-day S3 lifecycle rule (~72 restore points). AWS infrastructure (S3 bucket, IAM user, policy) is managed via Terraform in `terraform/`.
 
-**Vaultwarden DR failover:** A CloudWatch heartbeat agent sends a custom metric every 60 seconds. If heartbeats stop for ~5 minutes, a CloudWatch alarm triggers a Lambda function that launches an EC2 spot instance, restores the latest S3 backup, connects to Tailscale, obtains a Let's Encrypt certificate via Cloudflare DNS-01 challenge, updates the DNS record to the Tailscale IP, and serves Vaultwarden behind nginx with TLS at `https://vaultwarden-dr.arcade-lab.io`. When heartbeats resume for 10 consecutive minutes, the failover instance is automatically terminated. Infrastructure is managed via Terraform in `terraform/vaultwarden-dr/`.
+**Vaultwarden DR failover:** A CloudWatch heartbeat agent sends a custom metric every 60 seconds. If heartbeats stop for ~3 minutes, a CloudWatch alarm triggers a Lambda function that launches an EC2 spot instance, restores the latest S3 backup, connects to Tailscale, obtains a Let's Encrypt certificate via Cloudflare DNS-01 challenge, updates the DNS record to the Tailscale IP, and serves Vaultwarden behind nginx with TLS at `https://vaultwarden-dr.arcade-lab.io`. When heartbeats resume for 3 consecutive minutes, the failover instance is automatically terminated. Infrastructure is managed via Terraform in `terraform/vaultwarden-dr/`.
 
 ## Monitoring
 

@@ -178,19 +178,13 @@ trap 'on_error $LINENO' ERR
 
 set -euo pipefail
 
-apt-get update -y
-apt-get install -y docker.io sqlite3 unzip curl nginx
-
-curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
-unzip -q /tmp/awscliv2.zip -d /tmp
-/tmp/aws/install
-rm -rf /tmp/awscliv2.zip /tmp/aws
-
-curl -fsSL https://tailscale.com/install.sh | sh
-tailscale up --authkey="$TAILSCALE_AUTH_KEY" --hostname=vaultwarden-failover
+dnf install -y docker nginx sqlite unzip tar gzip
 
 systemctl enable docker
 systemctl start docker
+
+curl -fsSL https://tailscale.com/install.sh | sh
+tailscale up --authkey="$TAILSCALE_AUTH_KEY" --hostname=vaultwarden-failover
 
 LATEST_BACKUP=$(aws s3api list-objects-v2 \
     --bucket "$S3_BACKUP_BUCKET" \
@@ -239,7 +233,8 @@ else
         --data "{\"type\":\"A\",\"name\":\"$FAILOVER_DOMAIN\",\"content\":\"$TAILSCALE_IP\",\"ttl\":60,\"proxied\":false}"
 fi
 
-apt-get install -y certbot python3-certbot-dns-cloudflare
+dnf install -y python3-pip
+pip3 install certbot certbot-dns-cloudflare
 
 mkdir -p /root/.secrets
 cat > /root/.secrets/cloudflare.ini <<CFEOF
@@ -267,7 +262,7 @@ docker run -d \
     -e SHOW_PASSWORD_HINT=false \
     vaultwarden/server:latest
 
-cat > /etc/nginx/sites-available/vaultwarden <<NGINXEOF
+cat > /etc/nginx/conf.d/vaultwarden.conf <<NGINXEOF
 server {
     listen 443 ssl;
     server_name $FAILOVER_DOMAIN;
@@ -291,8 +286,6 @@ server {
 }
 NGINXEOF
 
-rm -f /etc/nginx/sites-enabled/default
-ln -sf /etc/nginx/sites-available/vaultwarden /etc/nginx/sites-enabled/
 systemctl restart nginx
 
 notify_discord "Vaultwarden failover ready at \`https://$FAILOVER_DOMAIN\`. Backup restored: \`$LATEST_BACKUP\`. Tailscale IP: \`$TAILSCALE_IP\`"
