@@ -14,6 +14,16 @@
       failed_when: docker_version.rc != 0
       changed_when: false
 
+    - name: Look up render group GID
+      command: getent group render
+      register: render_group
+      changed_when: false
+
+    - name: Look up video group GID
+      command: getent group video
+      register: video_group
+      changed_when: false
+
     - name: Create necessary directories for Jellyfin container
       file:
         path: "{{ item }}"
@@ -39,6 +49,11 @@
           - "127.0.0.1:8096:8096"
         env:
           TZ: "{{ jellyfin_timezone }}"
+        devices:
+          - "/dev/dri:/dev/dri"
+        groups:
+          - "{{ render_group.stdout.split(':')[2] }}"
+          - "{{ video_group.stdout.split(':')[2] }}"
         volumes:
           - "{{ jellyfin_config_path }}:/config"
           - "{{ jellyfin_cache_path }}:/cache"
