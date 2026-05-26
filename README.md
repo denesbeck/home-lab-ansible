@@ -1,4 +1,4 @@
-# 🧪 home-lab-ansible
+# 🧪 home-lab-infra
 
 Ansible automation for provisioning and configuring a single-node Ubuntu home lab server. Manages Docker containers, networking, storage, security, monitoring, and media services under the `arcade-lab.io` domain.
 
