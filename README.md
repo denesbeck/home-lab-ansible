@@ -26,7 +26,6 @@ Internet / Tailscale VPN
 ```
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#414559', 'primaryTextColor': '#c6d0f5', 'primaryBorderColor': '#51576d', 'lineColor': '#8caaee', 'secondaryColor': '#414559', 'tertiaryColor': '#414559', 'mainBkg': '#303446', 'nodeBorder': '#51576d', 'clusterBkg': '#292c3c', 'clusterBorder': '#51576d', 'titleColor': '#c6d0f5', 'edgeLabelBackground': '#303446'}}}%%
 graph TD
     subgraph Clients
         A1[Browser]
@@ -78,27 +77,6 @@ graph TD
     E4 --> G3
     F1 --> G1 & G2 & G3
     E8 -->|hourly backup| H
-
-    style A1 fill:#8caaee,stroke:#85c1dc,color:#303446
-    style A2 fill:#8caaee,stroke:#85c1dc,color:#303446
-    style B fill:#ca9ee6,stroke:#babbf1,color:#303446
-    style C fill:#ef9f76,stroke:#ea999c,color:#303446
-    style D fill:#ef9f76,stroke:#ea999c,color:#303446
-    style E1 fill:#a6d189,stroke:#81c8be,color:#303446
-    style E2 fill:#a6d189,stroke:#81c8be,color:#303446
-    style E3 fill:#a6d189,stroke:#81c8be,color:#303446
-    style E4 fill:#a6d189,stroke:#81c8be,color:#303446
-    style E5 fill:#a6d189,stroke:#81c8be,color:#303446
-    style E6 fill:#a6d189,stroke:#81c8be,color:#303446
-    style E7 fill:#a6d189,stroke:#81c8be,color:#303446
-    style E8 fill:#a6d189,stroke:#81c8be,color:#303446
-    style F1 fill:#e5c890,stroke:#ef9f76,color:#303446
-    style F2 fill:#e5c890,stroke:#ef9f76,color:#303446
-    style G1 fill:#eebebe,stroke:#ea999c,color:#303446
-    style G2 fill:#eebebe,stroke:#ea999c,color:#303446
-    style G3 fill:#eebebe,stroke:#ea999c,color:#303446
-    style G4 fill:#eebebe,stroke:#ea999c,color:#303446
-    style H fill:#c6d0f5,stroke:#babbf1,color:#303446
 ```
 
 ## Services
